@@ -4,7 +4,7 @@
 
 OS requirements:
  CentOS 9
- 
+
 
 2. Docker Installation
 3. Working with Docker Container
@@ -39,3 +39,11 @@ OS requirements:
 33. Advance Routing With Ingress-Controller
 34. Dynamic Provisioning of Persistent Volumes
 35. Create and Configure Managed Kubernetes Cluster On Cloud
+
+
+
+## Practicals
+
+Killercoda
+- [https://killercoda.com/]
+
