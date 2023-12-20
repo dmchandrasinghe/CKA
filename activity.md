@@ -47,3 +47,4 @@ OS requirements:
 Killercoda
 - [https://killercoda.com/]
 
+https://github.com/bmuschko/cka-crash-course/tree/master
