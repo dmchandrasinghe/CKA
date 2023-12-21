@@ -2,89 +2,91 @@
 
 ## Understand Kubernetes components and architecture
 
-
 1. Kubernetes Control Plane:
 
-API Server: Accepts and processes requests from users and other components.
+    API Server: Accepts and processes requests from users and other components.
 
-Controller Manager: Monitors the state of the cluster and takes corrective 
+    Controller Manager: Monitors the state of the cluster and takes corrective
 actions.
 
-Scheduler: Assigns pods to worker nodes
+        * Scheduler: Assigns pods to worker nodes
 
-etcd: Stores the cluster state
-
+        * etcd: Stores the cluster state
 
 2. Kubernetes Worker Nodes:
-Run containerized applications (pods).
-Managed by the control plane.
-Communicate with the control plane via the kubelet agent.
+    Run containerized applications (pods).
+    Managed by the control plane.
+    Communicate with the control plane via the kubelet agent.
 
 3. Pods:
-The basic unit of deployment in Kubernetes.
-Group one or more containers and shared storage.
-Scheduled to run on worker nodes.
+    The basic unit of deployment in Kubernetes.
+    Group one or more containers and shared storage.
+    Scheduled to run on worker nodes.
 
 4. Deployments:
-Manage the creation and scaling of pods.
-Define a desired state for a set of pods.
-Kubernetes automatically creates or deletes pods to match the desired state.
+    Manage the creation and scaling of pods.
+    Define a desired state for a set of pods.
+    Kubernetes automatically creates or deletes pods to match the desired state.
 
 5. Services:
-Provide a stable endpoint for pods.
-Load balance traffic across pods in a set.
-Can be exposed internally or externally to the cluster.
+    Provide a stable endpoint for pods.
+    Load balance traffic across pods in a set.
+    Can be exposed internally or externally to the cluster.
 
 6. Namespaces:
-Logical partitions of a Kubernetes cluster.
-Isolate resources and prevent conflicts between applications.
+    Logical partitions of a Kubernetes cluster.
+    Isolate resources and prevent conflicts between applications.
 
 7. Networking:
-Pods can communicate with each other using IP addresses or DNS names.
-Services provide a single point of access for pods.
-Ingress controllers allow external traffic to reach pods.
+
+    Pods can communicate with each other using IP addresses or DNS names.
+    Services provide a single point of access for pods.
+    Ingress controllers allow external traffic to reach pods.
 
 8. Storage:
-Persistent storage can be attached to pods using PersistentVolumes and PersistentVolumeClaims.
-Different storage classes can be used to provision different types of storage.
+
+    Persistent storage can be attached to pods using PersistentVolumes and PersistentVolumeClaims.
+    Different storage classes can be used to provision different types of storage.
 
 9. Security:
-Kubernetes provides role-based access control (RBAC) to control access to the cluster.
-Pods can be run with security contexts to limit their privileges.
-Network policies can be used to control traffic between pods.
 
-10. Lables <br>
-simply key value pairs
-use to metion or  describe resource (pods, nodes) own sparticular group
+    Kubernetes provides role-based access control (RBAC) to control access to the cluster.
+    Pods can be run with security contexts to limit their privileges.
+    Network policies can be used to control traffic between pods.
 
-11. Selectors <br>
-filter pods using lables apply function (network policy, deployments).
+10. Lables
 
-12. workloads <br>
-type of workload :
-    * replica-sets <br> 
-    maintain the set  of pods as metions in pod yaml
+    simply key value pairs
+    use to metion or describe resource (pods, nodes) own sparticular group
 
-    * deployment <br>
-    create pods
-    deployment --> replicaSet --> Pods
- 
-    * daemonSet : <br>
-    create pods in each node in the cluster (onitoring agent,log tools)
+11. Selectors
 
-    * StatefulSet <br>
-        Maintain state of pods even in recreated. Usefull when creating clustered      applications (Database, Redis, etc).
-        * pods need persitant state (ex: map storage to pod) 
-        * start pods in ordered list
+    filter pods using lables apply function (network policy, deployments).
 
-    * Jobs <br>
-    Pod need run and stop do specific task
+12. workloads
 
-    * cronjobs <br>
-    same as job but execute as defined schedule
+    type of workload :  
+
+      * replica-sets : maintain the set of pods as metions in pod yaml
+
+      * deployment : create pods
+        deployment --> replicaSet --> Pods
+
+      * daemonSet :  create pods in each node in the cluster (onitoring agent,log tools)
+
+      * StatefulSet :
+            Maintain state of pods even in recreated. Usefull when creating clustered applications (Database, Redis, etc).
+
+          * pods need persitant state (ex: map storage to pod)
+          * start pods in ordered list
+
+      * Jobs : Pod need run and stop do specific task
+
+      * cronjobs : same as job but execute as defined schedule
 
 13. Services
-access the pods using unifed method. create single interface to all the pods which serve single task. 
+
+    access the pods using unifed method. create single interface to all the pods which serve single task.
 
 ```yaml
 apiVersion: v1
@@ -101,29 +103,124 @@ spec:
       # Optional field
       # By default and for convenience, the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
       nodePort: 30007
-
 ```
-how communicate to service
 
- ```<service name>.<namespace>.svc.cluster.local```
+how to call service
 
+`<service name>.<namespace>.svc.cluster.local`
 
 type of services to communicate
 
-1. CLsuterIP
-2. NodePOrt
-3. LoadBalancer
+1. CLsuterIP :
+commubicate with in the cluster using pod networking
+
+  ```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review-deployment
+  labels:
+    app: review
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: review
+  template:
+    metadata:
+      labels:
+        app: review
+    spec:
+      containers:
+        - name: review-app
+          image: chamilaliyanage/echo-env-http:1.1
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: MY_APP_NAME
+              value: review-application
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: review-service
+spec:
+  selector:
+    app: review
+  ports:
+    - port: 80
+      targetPort: 8080
+
+```
+
+2. NodePOrt :
+extend cluster service to external network (node network)
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nodeport-service
+spec:
+  type: NodePort
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080 # app's container port
+      nodePort: 30000 # pecify a specific nodePort or Kubernetes will assign one
+
+```
+
+3. LoadBalancer : distributes incoming traffic among your app's pods and is cloud-provider-specific. 
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-loadbalancer-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080 #  app's container port
+
+```
+4. ExternalName: 
+
+```yaml
+apiversion: v1
+kind: service
+metadata: 
+  name: example-externalName
+spec:
+  type: ExternalName
+  externalName: rds.aws.com
+```
+
 
 ## Manage role-based access control (RBAC)
+
 * shoud know how to create, modify and delete RBACs.
 
 ## Use Kubeadm to install a basic cluster
+
 * should be able to operate the kubeadm tool to set up a Kubernetes cluster
 
 ## Manage a highly-available Kubernetes cluster
+
 * should be able to understand how to add nodes to the cluster and configure it to be highly available
 
 ## Provision underlying infrastructure to deploy a Kubernetes cluster
+
 * main goal here is to be able to lay the groundwork for a Kubernetes cluster installation (network, storage, dependencies, etc.)
 
 Installing Kubeadm
@@ -136,18 +233,18 @@ kubeadm
 kubelet and kubectl
 
 ## Perform a version upgrade on a Kubernetes cluster using Kubeadm
+
 * will be asked to upgrade a Kubernetes cluster using Kubeadm.
 
 upgrade Kubeadm Cluster
 
-
 ## Implement etcd backup and restore
+
 should learn and practice using the etcdctl utility to backup and restore etcd.
 
 Etcd is the cluster’s key-value store. All cluster configuration and information about pods, services, and so on are stored in key-value format here.
 
 etcd Backup & Restore Operations
-
 
 # Workloads & Scheduling
 
@@ -187,7 +284,6 @@ Deployments also allow you to keep track of all the changes you make. You can al
 
 Kubernetes Deployments
 
-
 ## Understand how resource limits can affect Pod scheduling
 
 Cluster management also includes workload management; as an administrator, you should ensure that each pod has access to resources based on its requirements.
@@ -206,11 +302,6 @@ In general , during the Exam , you should be able to create, modify and apply Ku
 Managing Kubernetes Objects
 Manage objects with Kustomize
 
-
-
-
-
-
 # Services & Networking
 
 ## Understand host networking configuration on the cluster nodes
@@ -227,16 +318,12 @@ Pods communicate with one another via services. This is made possible by the Kub
 
 Understand Kube Proxy
 
-
-
 ## Understand ClusterIP, NodePort, and LoadBalancer service types and endpoints
 
 Understanding each service type and their use cases is critical. Understanding how pods can be added to a service should be given special consideration.
 
 Kubernetes Service
 External Resource Exposure
-
-
 
 ## Know how to use Ingress controllers and Ingress resources
 
@@ -248,15 +335,11 @@ Kubernetes Ingress
 Kubernetes Ingress Controller
 Ingress TLS/SSL Setup
 
-
-
 ## Know how to configure and use CoreDNS
 
 CoreDNS is a highly adaptable and extensible DNS server that can act as the Kubernetes cluster DNS. The CNCF hosts the CoreDNS project, as it does Kubernetes.
 
 Using CoreDNS for Service Discovery
-
-
 
 ## Choose an appropriate container network interface plugin
 
@@ -269,10 +352,6 @@ There are numerous options, including Flannel, Calico, and others.
 Kubernetes Network Plugins
 The network section accounts for 20% of the exam’s content. You’ll almost certainly be asked to create at least one network policy, endpoint, or ingress.
 
-
-
-
-
 # Storage
 
 ## Understand storage classes, persistent volumes
@@ -284,18 +363,15 @@ Kubernetes Persistent Volumes
 Kubernetes Volume Modes
 Kubernetes Volume Access Modes
 
-
 ## Understand persistent volume claims primitive
+
 Persistent Volumes Claims
 
 ## Know how to configure applications with persistent storage
+
 By mounting a PVC, application pods can use persistent storage.
 
 Configure Kubernetes Volume in Pod
-
-
-
-
 
 # Troubleshooting
 
@@ -326,7 +402,6 @@ Administrators should also assist users in debugging applications that have been
 Understanding Kubernetes Logging
 Debug Kubernetes Objects
 
-
 ## Troubleshoot cluster component failure
 
 When users are confident that their application is properly configured, cluster components must be debugged and troubleshooted for failures.
@@ -334,9 +409,9 @@ When users are confident that their application is properly configured, cluster 
 Debug Kubernetes Cluster
 
 ## Troubleshoot networking
+
 There may be instances where things go wrong on the network end, such as incorrect configuration of ingress resources.
 
 Cluster Networking
 
-
-references: https://teckbootcamps.com/cka-exam-study-guide/
+references: <https://teckbootcamps.com/cka-exam-study-guide/>
