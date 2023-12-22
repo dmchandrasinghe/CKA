@@ -1,6 +1,33 @@
+
 # Cluster Architecture, Installation & Configuration
 
 ## Understand Kubernetes components and architecture
+Basic Micro serice architecure:
+  1. Codebase: Maintain one codebase per application, tracked in version control. This helps manage changes, rollbacks, and collaboration effectively.
+
+  2. Dependencies: Explicitly declare and isolate dependencies. Use package managers to define dependencies and avoid relying on system-wide dependencies.
+
+  3. Config: Store configuration in the environment. Keep configurations (like credentials, API keys, etc.) separate from code, allowing easy configuration changes without code modifications.
+
+  4. Backing services: Treat backing services (databases, caches, etc.) as attached resources. Access them via environment variables or service discovery mechanisms.
+
+  5. Build, release, run: Strictly separate build, release, and run stages. Maintain a clear distinction between building the app, releasing it to a specific environment, and running it in that environment.
+
+  6. Processes: Execute the app as one or more stateless processes. Applications should be designed to be stateless, share-nothing processes that can start and stop gracefully.
+
+  7. Port binding: Export services via port binding. Services should be self-contained and expose themselves via a port, allowing them to be easily connected to the outside world.
+
+  8. Concurrency: Scale out via the process model. Scale by running multiple processes and scaling horizontally rather than vertically by increasing the resources of a single instance.
+
+  9. Disposability: Maximize robustness with fast startup and graceful shutdown. Apps should be able to start up quickly and shut down gracefully, handling sudden failures or updates seamlessly.
+
+  10. Dev/prod parity: Keep development, staging, and production environments as similar as possible. Reducing discrepancies between environments minimizes bugs and deployment issues.
+
+  11. Logs: Treat logs as event streams. Applications should generate logs as event streams and leave log management and analysis to external tools.
+
+  12. Admin processes: Run admin/management tasks as one-off processes. Provide a way to run administrative or maintenance tasks separately from the main application.
+
+k8s designed to support all abov factors. kubetes have diffrenct componetes to cater each requirement as below.
 
 1. Kubernetes Control Plane:
 
@@ -114,7 +141,7 @@ type of services to communicate
 1. CLsuterIP :
 commubicate with in the cluster using pod networking
 
-  ```yaml
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -205,7 +232,33 @@ spec:
   type: ExternalName
   externalName: rds.aws.com
 ```
-
+5. Ingress : <br>
+API object manage external acess to the internal services by defining and enforcing routing rules for incoming HTTP and HTTPS traffic,
+Popular tools like nginx, HAProxy. Ingress controller can
+  * Route traffic to internal service by path base or name base routing
+  * ssl terminate
+  *   
+ ```yaml
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: example-ingress
+    annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  spec:
+    rules:
+    - host: example.com
+      http:
+        paths:
+          - path: /app
+            pathType: Prefix
+            backend:
+              service:
+                name: example-service
+                port:
+                  number: 80
+ 
+ ```
 
 ## Manage role-based access control (RBAC)
 
@@ -255,6 +308,26 @@ Kubernetes Deployment ensures that an application has a minimum number of replic
 In the Exam , you should know how to do rollbacks and rollouts of deployments.
 
 Kubernetes Deployment Concepts
+  
+  1. Recreate [native]
+  2. Ramped [native] [default]
+      * ramp update or rolling update 
+  3. Blue/Green
+      * red/black deployment, create new version traffic route instantly.this can be done by changing serive selector label patching once version 2 created. easy to rollback and rollforward. high resource utilization 
+
+  4. Canary
+      * same as ramped update change route to percentage of traffic.can do this by create pods count as per percentage each versions. then use same service for both version. this can be done with service mesh like [Istio] 
+
+  5. A/B Testing
+      * route traffic to rach version base on incomming traffic meta data like device type, geo location, user type, 
+
+  6. Shadow
+      * mirrot version doesnt activly respond in mirror state. use test application load testing, application behaviour error without impact to users.
+
+  ![Alt text](image.png)
+
+
+
 Kubernetes Rolling Update
 
 ## Use ConfigMaps and Secrets to configure applications
@@ -275,6 +348,74 @@ Horizontal Pod Autoscalers (HPAs) can be used to increase the number of replicas
 For the Exam , you should be able to scale a pod/deployment. You can follow this tutorial.
 
 Working With Horizontal Pod Autoscaler
+
+### autoscaling
+  auto scale pod or cluster size base on metrics.simply use basics metrics like cpu , memory but can use external metrics like messege queue size, object type kind of metrics using external adapters.
+  1. HPA
+  2. Cluster autoscale
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: cpu_mem_hpa
+  label:
+    site: zone
+    env: prod
+spec:
+  maxReplicas: 10
+  minReplicas: 1
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: node-app
+  metrics:
+    -type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          everrageUtilizationL: 75
+    type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          everrageUtilizationL: 75
+```
+This HPA auto scale pod count base on. But only node have limitations of maximum pods count. then we need clsuter autoscalaer.
+```yaml
+apiVersion: autoscaling.openshift.io/v1
+kind: ClusterAutoscaler
+metadata:
+  name: zone-prod-autoscaler
+spec:
+  scaleUp:
+    policies:
+      - name: zone-prod-cluster-scale-up-policy
+        nodeSelector:
+          matchLabels:
+            node-role.kubernetes.io/worker: "" #this lable use to apply only for worker nodes in cluster
+        limits:
+          cpu: "2000m"
+          memory: "4Gi"
+        delta: 3
+        enabled: true
+  scaleDown:
+    policies:
+      - name: cluster-scale-down-policy
+        nodeSelector:
+          matchLabels:
+            node-role.kubernetes.io/worker: "" #this lable use to apply only for worker nodes in cluster
+        limits:
+          cpu: "1000m"
+          memory: "2Gi"
+        delta: 3
+        enabled: true
+
+```
+
+
 
 ## Understand the primitives used to create robust, self-healing, application deployments
 
@@ -381,7 +522,128 @@ Application logs can aid in understanding the application’s activities and sta
 
 Examining logs of Kubernetes control plane components such as etcd and the scheduler can also be very beneficial.
 
-Kubernetes Logging
+  ### Kubernetes Logging
+  by default k8s support get logs from stdout and stderr in container runtime. kublet writes those logs in persistant location(/var/log) in each node. agents in each node(can collet logs and sent log store/processor to keep logs.
+
+example :
+agent deply in eachcnode using daemonset deploymebnt
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: zone-prod
+data:
+  filebeat.yml: |-
+    filebeat.inputs:
+    - type: container
+      paths:
+        - /var/log/pods/*/*.log
+      processors:
+        - add_kubernetes_metadata:
+            in_cluster: true
+
+    output.elasticsearch:
+      hosts: ["elasticsearch.zone-prod.svc.cluster.local:9200"]
+      username: "username"
+      password: "password"
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: zone-prod
+spec:
+  selector:
+    matchLabels:
+      app: filebeat
+  template:
+    metadata:
+      labels:
+        app: filebeat
+    spec:
+      containers:
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:latest
+        args: [
+          "-c", "/etc/filebeat.yml",
+          "-e",
+        ]
+        volumeMounts:
+        - name: filebeat-config
+          mountPath: /etc/filebeat.yml
+          subPath: filebeat.yml
+        - name: varlogpods
+          mountPath: /var/log/pods
+          readOnly: true
+      volumes:
+      - name: filebeat-config
+        configMap:
+          name: filebeat-config
+      - name: varlogpods
+        hostPath:
+          path: /var/log/pods
+
+```
+  deploy elastic search to store/process
+
+create elastic search service
+```yaml
+apiVersion: v1
+kind: service
+metadata:
+  name: elasticsearch
+  namespace: zone-prod
+  labels:
+    env: prod
+    site: zone
+spec:
+  selector:
+    app: elasticseach
+  clusterIP: None
+  ports:
+    - port: 9200
+      name: rest
+    - port: 9300
+      name: inter-node
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+spec:
+  serviceName: elasticsearch
+  replicas: 3  
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch-prod
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.15.2
+        ports:
+        - containerPort: 9200
+          name: rest
+        - containerPort: 9300
+          name: inter-node
+        resources:
+          limits:
+            memory: 2Gi  # Adjust resource limits as needed
+          requests:
+            memory: 1Gi  # Adjust resource requests as needed
+        env:
+        - name: discovery.type
+          value: single-node  # For a single-node setup, can be changed for multi-node
+
+```
+
 
 ## Understand how to monitor applications
 
@@ -390,6 +652,9 @@ Monitoring applications can be accomplished by storing logs and analyzing applic
 Tools like Prometheus and Grafana are popular because they make metric management simple.
 
 Monitoring & Logging & Debugging
+
+  Prometheus :
+      pull base target monitoring. use pushgateway to monitor short-lived targets like jobs 
 
 ## Manage container stdout & stderr logs
 
