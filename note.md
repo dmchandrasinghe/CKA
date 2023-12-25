@@ -464,9 +464,46 @@ spec:
     disktype: ssd
 
 ```
+### afinity and anti-afinity
 
+affinity feature consists of two types 
+1. node afinity : like the <code>nodeSelector</code> field but is more expressive and allows you to specify soft rules.can use In, NotIn, Exists, DoesNotExist, Gt and Lt operators. NotIn and DoesNotExist quit similar to function of taints and tollerants,you can use it.
 
+    * <code>requiredDuringSchedulingIgnoredDuringExecution</code>: The scheduler can't schedule the Pod unless the rule is met. This functions like nodeSelector, but with a more expressive syntax.
+    * <code>preferredDuringSchedulingIgnoredDuringExecution</code>: The scheduler tries to find a node that meets the rule. If a matching node is not available, the scheduler still schedules the Pod.
 
+example:
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: with-node-affinity
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: topology.kubernetes.io/zone
+            operator: In
+            values:
+            - antarctica-east1
+            - antarctica-west1
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 1
+        preference:
+          matchExpressions:
+          - key: another-node-label-key
+            operator: In
+            values:
+            - another-node-label-value
+  containers:
+  - name: with-node-affinity
+    image: registry.k8s.io/pause:2.0
+
+```
+
+2. Inter-pod affinity/anti-affinity allows you to constrain Pods against labels on other Pods
 ## Awareness of manifest management and common templating tools
 
 This section assumes you’re familiar with tools like kustomization, helm, and so on.
