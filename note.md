@@ -431,8 +431,41 @@ Cluster management also includes workload management; as an administrator, you s
 
 Each pod in kubernetes can be assigned a minimum and maximum CPU and memory usage.
 
-Manage Container Resources
-Pods with resource requests
+* Manage Container Resources
+* Pods with resource requests
+
+You can use any of the following methods to choose where Kubernetes schedules specific Pods:
+
+* <code>nodeSelector</code> field matching against node labels
+* Affinity and anti-affinity
+* nodeName field
+* Pod topology spread constraints (taints and tollerents)
+
+
+### node selector
+simplest recommended form of node selection
+lable k8s node with ssd label
+```bash
+kubectl label nodes <your-node-name> disktype=ssd
+```
+deploy pod to clsuter with selector
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx
+  labels:
+    env: test
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+  nodeSelector:
+    disktype: ssd
+
+```
+
+
 
 ## Awareness of manifest management and common templating tools
 
