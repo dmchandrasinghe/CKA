@@ -2,7 +2,9 @@
 # Cluster Architecture, Installation & Configuration
 
 ## Understand Kubernetes components and architecture
+
 Basic Micro serice architecure:
+
   1. Codebase: Maintain one codebase per application, tracked in version control. This helps manage changes, rollbacks, and collaboration effectively.
 
   2. Dependencies: Explicitly declare and isolate dependencies. Use package managers to define dependencies and avoid relying on system-wide dependencies.
@@ -27,7 +29,7 @@ Basic Micro serice architecure:
 
   12. Admin processes: Run admin/management tasks as one-off processes. Provide a way to run administrative or maintenance tasks separately from the main application.
 
-k8s designed to support all abov factors. kubetes have diffrenct componetes to cater each requirement as below.
+k8s designed to support all the above factors. Kubernetes have different components to cater for each requirement as below.
 
 1. Kubernetes Control Plane:
 
@@ -36,14 +38,17 @@ k8s designed to support all abov factors. kubetes have diffrenct componetes to c
     Controller Manager: Monitors the state of the cluster and takes corrective
 actions.
 
-        * Scheduler: Assigns pods to worker nodes
+        * kube-Scheduler: Assigns pods to worker nodes. which? pods goes where?
 
-        * etcd: Stores the cluster state
+        * etcd: Stores the cluster state as key-value pairs
 
 2. Kubernetes Worker Nodes:
-    Run containerized applications (pods).
+    Run containerised applications (pods).
     Managed by the control plane.
     Communicate with the control plane via the kubelet agent.
+
+3. Kubelet Controller :
+    agent responsible for manage nods in the kubernetes cluster.
 
 3. Pods:
     The basic unit of deployment in Kubernetes.
@@ -66,7 +71,7 @@ actions.
 
 7. Networking:
 
-    Pods can communicate with each other using IP addresses or DNS names.
+    Pods can communicate with each other using IP addresses or DNS names in pod network created using kube-proxy service.
     Services provide a single point of access for pods.
     Ingress controllers allow external traffic to reach pods.
 
@@ -138,7 +143,7 @@ how to call service
 
 type of services to communicate
 
-1. CLsuterIP :
+  1. CLsuterIP :
 commubicate with in the cluster using pod networking
 
 ```yaml
@@ -184,7 +189,7 @@ spec:
 
 ```
 
-2. NodePOrt :
+  2. NodePort :
 extend cluster service to external network (node network)
 
 ```yaml
@@ -204,7 +209,7 @@ spec:
 
 ```
 
-3. LoadBalancer : distributes incoming traffic among your app's pods and is cloud-provider-specific. 
+  3. LoadBalancer : distributes incoming traffic among your app's pods and is cloud-provider-specific.
 
 ```yaml
 apiVersion: v1
@@ -221,7 +226,8 @@ spec:
       targetPort: 8080 #  app's container port
 
 ```
-4. ExternalName: 
+
+  4. ExternalName:
 
 ```yaml
 apiversion: v1
@@ -232,12 +238,15 @@ spec:
   type: ExternalName
   externalName: rds.aws.com
 ```
-5. Ingress : <br>
+
+  5. Ingress : <br>
 API object manage external acess to the internal services by defining and enforcing routing rules for incoming HTTP and HTTPS traffic,
 Popular tools like nginx, HAProxy. Ingress controller can
-  * Route traffic to internal service by path base or name base routing
-  * ssl terminate
-  *   
+
+* Route traffic to internal service by path base or name base routing
+* ssl terminate
+*
+
  ```yaml
   apiVersion: networking.k8s.io/v1
   kind: Ingress
@@ -295,11 +304,53 @@ upgrade Kubeadm Cluster
 
 should learn and practice using the etcdctl utility to backup and restore etcd.
 
-Etcd is the cluster’s key-value store. All cluster configuration and information about pods, services, and so on are stored in key-value format here.
+Etcd is the cluster’s key-value store. All cluster configurations and information about pods, services, and so on are stored in key-value format here.
 
 etcd Backup & Restore Operations
 
 # Workloads & Scheduling
+
+type of workload :  
+
+* replica-sets: maintain the set of pods as metions in pod yaml
+
+  ```yaml
+  apiVersion: apps/v1
+  kind: ReplicaSet
+  metadata:
+    name: sample-Replset
+    labels:
+      name:
+      type:
+  spec:
+    template:
+      metadata:
+        name: sample-webapp
+        label:
+          name: frontend
+          type: webapp
+      spec:
+        container:
+        - name: web-server
+          image: nginx
+    replicas: 3
+    selector:
+  ```
+
+  * Deployment: create pods
+        deployment --> replicaSet --> Pods
+
+  * daemonSet:  create pods in each node in the cluster (monitoring agent, log tools)
+
+  * StatefulSet :
+            Maintain the state of pods even in recreation. Useful when creating clustered applications (Database, Redis, etc).
+
+    * pods need persitant state (ex: map storage to pod)
+    * start pods in ordered list
+
+  * Jobs : Pod need run and stop do specific task
+
+  * cronjobs : same as job but execute as defined schedule
 
 ## Understand deployments and how to perform rolling update and rollbacks
 
@@ -311,30 +362,39 @@ Kubernetes Deployment Concepts
   
   1. Recreate [native]
   2. Ramped [native] [default]
-      * ramp update or rolling update 
+      * ramp update or rolling update
   3. Blue/Green
-      * red/black deployment, create new version traffic route instantly.this can be done by changing serive selector label patching once version 2 created. easy to rollback and rollforward. high resource utilization 
+      * red/black deployment, create new version traffic route instantly.this can be done by changing serive selector label patching once version 2 created. easy to rollback and rollforward. high resource utilization
 
   4. Canary
-      * same as ramped update change route to percentage of traffic.can do this by create pods count as per percentage each versions. then use same service for both version. this can be done with service mesh like [Istio] 
+      * same as ramped update change route to percentage of traffic.can do this by create pods count as per percentage each versions. then use same service for both version. this can be done with service mesh like [Istio]
 
   5. A/B Testing
-      * route traffic to rach version base on incomming traffic meta data like device type, geo location, user type, 
+      * route traffic to reach version based on incoming traffic metadata like device type, geo-location, user type,
 
   6. Shadow
-      * mirrot version doesnt activly respond in mirror state. use test application load testing, application behaviour error without impact to users.
+      * The mirror version does actively respond in the mirror state. use test application load testing, application behaviour error without impact to users.
 
   ![Alt text](image.png)
 
-
-
 Kubernetes Rolling Update
+
+for the deployment, we use yaml configuration file to define the deployment. In deployment, yaml has important properties
+
+```yaml
+apiversion: v1,v1beta, apps/v1 etc
+kind: pod, services, deployment etc
+metadata: <meta data of pod>
+  name: 
+  labels: 
+spec: <specification of pod>
+```
 
 ## Use ConfigMaps and Secrets to configure applications
 
 Configmaps in Kubernetes are useful for storing non-critical data in key-value pair format. They can also be used to inject environment variables into pods.
 
-In the Exam , you should knwo how to use configmaps and secrets objects to create, modify, and delete variables and secrets and make them available to a pod.
+In the Exam, you should know how to use configmaps and secrets objects to create, modify, and delete variables and secrets and make them available to a pod.
 
 Kubernetes Configmap Concepts
 Kubernetes Secrets Concepts
@@ -350,7 +410,9 @@ For the Exam , you should be able to scale a pod/deployment. You can follow this
 Working With Horizontal Pod Autoscaler
 
 ### autoscaling
-  auto scale pod or cluster size base on metrics.simply use basics metrics like cpu , memory but can use external metrics like messege queue size, object type kind of metrics using external adapters.
+
+  auto scale pod or cluster size based on metrics. simply use basic metrics like CPU, and memory but can use external metrics like message queue size, and object type kind of metrics using external adapters.
+
   1. HPA
   2. Cluster autoscale
 
@@ -383,7 +445,9 @@ spec:
           type: Utilization
           everrageUtilizationL: 75
 ```
-This HPA auto scale pod count base on. But only node have limitations of maximum pods count. then we need clsuter autoscalaer.
+
+This HPA auto-scale pod count is based on. But only nodes have limitations of maximum pod count. then we need clsuter autoscalaer.
+
 ```yaml
 apiVersion: autoscaling.openshift.io/v1
 kind: ClusterAutoscaler
@@ -395,7 +459,7 @@ spec:
       - name: zone-prod-cluster-scale-up-policy
         nodeSelector:
           matchLabels:
-            node-role.kubernetes.io/worker: "" #this lable use to apply only for worker nodes in cluster
+            node-role.kubernetes.io/worker: " "    #this label used to apply only for worker nodes in cluster
         limits:
           cpu: "2000m"
           memory: "4Gi"
@@ -406,7 +470,7 @@ spec:
       - name: cluster-scale-down-policy
         nodeSelector:
           matchLabels:
-            node-role.kubernetes.io/worker: "" #this lable use to apply only for worker nodes in cluster
+            node-role.kubernetes.io/worker: "" # this label used to apply only for worker nodes in cluster
         limits:
           cpu: "1000m"
           memory: "2Gi"
@@ -414,8 +478,6 @@ spec:
         enabled: true
 
 ```
-
-
 
 ## Understand the primitives used to create robust, self-healing, application deployments
 
@@ -429,7 +491,7 @@ Kubernetes Deployments
 
 Cluster management also includes workload management; as an administrator, you should ensure that each pod has access to resources based on its requirements.
 
-Each pod in kubernetes can be assigned a minimum and maximum CPU and memory usage.
+Each pod in Kubernetes can be assigned a minimum and maximum CPU and memory usage.
 
 * Manage Container Resources
 * Pods with resource requests
@@ -441,14 +503,17 @@ You can use any of the following methods to choose where Kubernetes schedules sp
 * nodeName field
 * Pod topology spread constraints (taints and tollerents)
 
-
 ### node selector
+
 simplest recommended form of node selection
 lable k8s node with ssd label
+
 ```bash
 kubectl label nodes <your-node-name> disktype=ssd
 ```
+
 deploy pod to clsuter with selector
+
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -464,15 +529,18 @@ spec:
     disktype: ssd
 
 ```
+
 ### afinity and anti-afinity
 
-affinity feature consists of two types 
+affinity feature consists of two types
+
 1. node afinity : like the <code>nodeSelector</code> field but is more expressive and allows you to specify soft rules.can use In, NotIn, Exists, DoesNotExist, Gt and Lt operators. NotIn and DoesNotExist quit similar to function of taints and tollerants,you can use it.
 
     * <code>requiredDuringSchedulingIgnoredDuringExecution</code>: The scheduler can't schedule the Pod unless the rule is met. This functions like nodeSelector, but with a more expressive syntax.
     * <code>preferredDuringSchedulingIgnoredDuringExecution</code>: The scheduler tries to find a node that meets the rule. If a matching node is not available, the scheduler still schedules the Pod.
 
 example:
+
 ```yaml
 apiVersion: v1
 kind: Pod
@@ -504,11 +572,12 @@ spec:
 ```
 
 2. Inter-pod affinity/anti-affinity allows you to constrain Pods against labels on other Pods
+
 ## Awareness of manifest management and common templating tools
 
-This section assumes you’re familiar with tools like kustomization, helm, and so on.
+This section assumes you’re familiar with tools like kustomiz, helm, etc.
 
-In general , during the Exam , you should be able to create, modify and apply Kubernetes manifests
+In general, during the Exam, you should be able to create, modify and apply Kubernetes manifests
 
 Managing Kubernetes Objects
 Manage objects with Kustomize
@@ -540,7 +609,7 @@ External Resource Exposure
 
 External entities are granted access to internal cluster services via ingress resources. Ingress controllers are load balancers that enable it.
 
-For the Exam , you should know how to create and configure Ingress Understand Ingress Controllers
+For the Exam, you should know how to create and configure Ingress Understand Ingress Controllers
 
 Kubernetes Ingress
 Kubernetes Ingress Controller
@@ -556,7 +625,7 @@ Using CoreDNS for Service Discovery
 
 The Container Networking Interface (CNI) aims to develop a generic plugin-based networking solution for containers.
 
-For the Exam , you should Know how to choose a CNI according to your needs.
+For the Exam, you should know how to choose a CNI according to your needs.
 
 There are numerous options, including Flannel, Calico, and others.
 
@@ -586,17 +655,45 @@ Configure Kubernetes Volume in Pod
 
 # Troubleshooting
 
+## Accessing the Cluster
+
+Understanding different methods to access a Kubernetes cluster (kubectl, Kubernetes Dashboard, etc.).
+Setting up kubeconfig files for authentication.
+Using service accounts for authentication.
+
+## Cluster Information
+
+Retrieving cluster information using commands like kubectl cluster-info.
+
+Checking the status of various cluster components (kubelet, kube-proxy, etcd, etc.).
+Understanding cluster configuration files and their locations.
+
+## Node Evaluation
+
+Inspecting nodes in the cluster using kubectl get nodes or other relevant commands.
+
+Gathering node-specific information such as capacity, allocatable resources, labels, and annotations.
+
+Understanding node conditions and how to interpret them (Ready, OutOfDisk, MemoryPressure, etc.).
+
+Identifying and troubleshooting node-related issues.
+
+Investigating node problems using logs (kubelet, container runtime logs, etc.).
+
+Dealing with node failures or unavailability.
+
 ## Evaluate cluster and node logging
 
 Application logs can aid in understanding the application’s activities and status. The logs are especially useful for troubleshooting and monitoring cluster activity.
 
 Examining logs of Kubernetes control plane components such as etcd and the scheduler can also be very beneficial.
 
-  ### Kubernetes Logging
-  by default k8s support get logs from stdout and stderr in container runtime. kublet writes those logs in persistant location(/var/log) in each node. agents in each node(can collet logs and sent log store/processor to keep logs.
+### Kubernetes Logging
+
+  by default k8s support gets logs from stdout and stderr in container runtime. kublet writes those logs in a persistent location(/var/log) in each node. agents in each node(can collect logs and send log store/processor to keep logs.
 
 example :
-agent deply in eachcnode using daemonset deploymebnt
+agent deploy in each node using daemonset deployment
 
 ```yaml
 apiVersion: v1
@@ -657,9 +754,11 @@ spec:
           path: /var/log/pods
 
 ```
+
   deploy elastic search to store/process
 
 create elastic search service
+
 ```yaml
 apiVersion: v1
 kind: service
@@ -714,21 +813,29 @@ spec:
 
 ```
 
-
 ## Understand how to monitor applications
 
 Monitoring applications can be accomplished by storing logs and analyzing application metrics.
 
 Tools like Prometheus and Grafana are popular because they make metric management simple.
 
-Monitoring & Logging & Debugging
+### Cluster Health Monitoring
+
+* Monitoring cluster health using built-in tools (metrics-server, Prometheus, etc.).
+* Understanding the significance of different metrics (CPU, memory, network, etc.) in cluster evaluation.
+* Interpreting monitoring data to identify and resolve issues.
+
+### Monitoring & Logging & Debugging
 
   Prometheus :
-      pull base target monitoring. use pushgateway to monitor short-lived targets like jobs 
+      pull base target monitoring. use pushgateway to monitor short-lived targets like jobs
 
 ## Manage container stdout & stderr logs
 
-Create Logging agent (stdeout & stderr )
+Create a Logging agent (stdout & stderr )
+Configuring and accessing cluster-level audit logs.
+Understanding logging mechanisms in Kubernetes.
+Using logs for troubleshooting and security analysis.
 
 ## Troubleshoot application failure
 
@@ -740,7 +847,9 @@ Debug Kubernetes Objects
 ## Troubleshoot cluster component failure
 
 When users are confident that their application is properly configured, cluster components must be debugged and troubleshooted for failures.
-
+ identifying and diagnosing issues affecting multiple nodes or the entire cluster.
+Applying debugging techniques to resolve cluster-wide problems.
+Recovering from cluster-level failures.
 Debug Kubernetes Cluster
 
 ## Troubleshoot networking
