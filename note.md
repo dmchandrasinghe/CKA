@@ -1,90 +1,120 @@
-
 # Cluster Architecture, Installation & Configuration
 
 ## Understand Kubernetes components and architecture
 
 Basic Micro serice architecure:
 
-  1. Codebase: Maintain one codebase per application, tracked in version control. This helps manage changes, rollbacks, and collaboration effectively.
+1. Codebase: Maintain one codebase per application, tracked in version control. This helps manage changes, rollbacks, and collaboration effectively.
 
-  2. Dependencies: Explicitly declare and isolate dependencies. Use package managers to define dependencies and avoid relying on system-wide dependencies.
+2. Dependencies: Explicitly declare and isolate dependencies. Use package managers to define dependencies and avoid relying on system-wide dependencies.
 
-  3. Config: Store configuration in the environment. Keep configurations (like credentials, API keys, etc.) separate from code, allowing easy configuration changes without code modifications.
+3. Config: Store configuration in the environment. Keep configurations (like credentials, API keys, etc.) separate from code, allowing easy configuration changes without code modifications.
 
-  4. Backing services: Treat backing services (databases, caches, etc.) as attached resources. Access them via environment variables or service discovery mechanisms.
+4. Backing services: Treat backing services (databases, caches, etc.) as attached resources. Access them via environment variables or service discovery mechanisms.
 
-  5. Build, release, run: Strictly separate build, release, and run stages. Maintain a clear distinction between building the app, releasing it to a specific environment, and running it in that environment.
+5. Build, release, run: Strictly separate build, release, and run stages. Maintain a clear distinction between building the app, releasing it to a specific environment, and running it in that environment.
 
-  6. Processes: Execute the app as one or more stateless processes. Applications should be designed to be stateless, share-nothing processes that can start and stop gracefully.
+6. Processes: Execute the app as one or more stateless processes. Applications should be designed to be stateless, share-nothing processes that can start and stop gracefully.
 
-  7. Port binding: Export services via port binding. Services should be self-contained and expose themselves via a port, allowing them to be easily connected to the outside world.
+7. Port binding: Export services via port binding. Services should be self-contained and expose themselves via a port, allowing them to be easily connected to the outside world.
 
-  8. Concurrency: Scale out via the process model. Scale by running multiple processes and scaling horizontally rather than vertically by increasing the resources of a single instance.
+8. Concurrency: Scale out via the process model. Scale by running multiple processes and scaling horizontally rather than vertically by increasing the resources of a single instance.
 
-  9. Disposability: Maximize robustness with fast startup and graceful shutdown. Apps should be able to start up quickly and shut down gracefully, handling sudden failures or updates seamlessly.
+9. Disposability: Maximize robustness with fast startup and graceful shutdown. Apps should be able to start up quickly and shut down gracefully, handling sudden failures or updates seamlessly.
 
-  10. Dev/prod parity: Keep development, staging, and production environments as similar as possible. Reducing discrepancies between environments minimizes bugs and deployment issues.
+10. Dev/prod parity: Keep development, staging, and production environments as similar as possible. Reducing discrepancies between environments minimizes bugs and deployment issues.
 
-  11. Logs: Treat logs as event streams. Applications should generate logs as event streams and leave log management and analysis to external tools.
+11. Logs: Treat logs as event streams. Applications should generate logs as event streams and leave log management and analysis to external tools.
 
-  12. Admin processes: Run admin/management tasks as one-off processes. Provide a way to run administrative or maintenance tasks separately from the main application.
+12. Admin processes: Run admin/management tasks as one-off processes. Provide a way to run administrative or maintenance tasks separately from the main application.
 
 k8s designed to support all the above factors. Kubernetes have different components to cater for each requirement as below.
 
-1. Kubernetes Control Plane:
+1.  Kubernetes Control Plane:
 
-    API Server: Accepts and processes requests from users and other components.
+        API Server: Accepts and processes requests from users and other components.
 
-    Controller Manager: Monitors the state of the cluster and takes corrective
-actions.
+        Controller Manager: Monitors the state of the cluster and takes corrective
 
-        * kube-Scheduler: Assigns pods to worker nodes. which? pods goes where?
+    actions.
 
-        * etcd: Stores the cluster state as key-value pairs
+            * kube-Scheduler: Assigns pods to worker nodes. which? pods goes where?
 
-2. Kubernetes Worker Nodes:
+            * etcd: Stores the cluster state as key-value pairs
+
+2.  Kubernetes Worker Nodes:
     Run containerised applications (pods).
     Managed by the control plane.
     Communicate with the control plane via the kubelet agent.
 
-3. Kubelet Controller :
+3.  Kubelet Controller :
     agent responsible for manage nods in the kubernetes cluster.
 
-3. Pods:
+4.  Pods:
     The basic unit of deployment in Kubernetes.
     Group one or more containers and shared storage.
     Scheduled to run on worker nodes.
 
-4. Deployments:
+5.  Deployments:
     Manage the creation and scaling of pods.
     Define a desired state for a set of pods.
     Kubernetes automatically creates or deletes pods to match the desired state.
 
-5. Services:
+6.  Services:
     Provide a stable endpoint for pods.
     Load balance traffic across pods in a set.
     Can be exposed internally or externally to the cluster.
 
-6. Namespaces:
+7.  Namespaces:
     Logical partitions of a Kubernetes cluster.
     Isolate resources and prevent conflicts between applications.
+    create a namespace
+    <code>kubectl create namespace dev </code>
+
+    ```yaml
+    apiversion: v1
+    kind: namespace
+    metadata:
+      name: dev
+    ```
+
+change default namespace
+
+<code>kubectl config set-context $(kubectl config current-context) --namespace=dev </code>
+
+- Resource Quota : Limit resource for a given namespace
+
+  ```yaml
+  apiversion: v1
+  kind: ResourceQuota
+  metadata:
+    name: compute-quota
+    namespace: dev
+  spec:
+    hard:
+      pods: "10"
+      requests.cpu: "4" # guranteed cpu units
+      requests.memory: "5Gi" # guranteed memory utilization
+      limits.cpu: "10" # maximum cpu utilization
+      limits.memory: "10Gi" #maximum memory utilization
+  ```
 
 7. Networking:
 
-    Pods can communicate with each other using IP addresses or DNS names in pod network created using kube-proxy service.
-    Services provide a single point of access for pods.
-    Ingress controllers allow external traffic to reach pods.
+   Pods can communicate with each other using IP addresses or DNS names in pod network created using kube-proxy service.
+   Services provide a single point of access for pods.
+   Ingress controllers allow external traffic to reach pods.
 
 8. Storage:
 
-    Persistent storage can be attached to pods using PersistentVolumes and PersistentVolumeClaims.
-    Different storage classes can be used to provision different types of storage.
+   Persistent storage can be attached to pods using PersistentVolumes and PersistentVolumeClaims.
+   Different storage classes can be used to provision different types of storage.
 
 9. Security:
 
-    Kubernetes provides role-based access control (RBAC) to control access to the cluster.
-    Pods can be run with security contexts to limit their privileges.
-    Network policies can be used to control traffic between pods.
+   Kubernetes provides role-based access control (RBAC) to control access to the cluster.
+   Pods can be run with security contexts to limit their privileges.
+   Network policies can be used to control traffic between pods.
 
 10. Lables
 
@@ -97,24 +127,24 @@ actions.
 
 12. workloads
 
-    type of workload :  
+    type of workload :
 
-      * replica-sets : maintain the set of pods as metions in pod yaml
+    - replica-sets : maintain the set of pods as metions in pod yaml
 
-      * deployment : create pods
-        deployment --> replicaSet --> Pods
+    - deployment : create pods
+      deployment --> replicaSet --> Pods
 
-      * daemonSet :  create pods in each node in the cluster (onitoring agent,log tools)
+    - daemonSet : create pods in each node in the cluster (onitoring agent,log tools)
 
-      * StatefulSet :
-            Maintain state of pods even in recreated. Usefull when creating clustered applications (Database, Redis, etc).
+    - StatefulSet :
+      Maintain state of pods even in recreated. Usefull when creating clustered applications (Database, Redis, etc).
 
-          * pods need persitant state (ex: map storage to pod)
-          * start pods in ordered list
+      - pods need persitant state (ex: map storage to pod)
+      - start pods in ordered list
 
-      * Jobs : Pod need run and stop do specific task
+    - Jobs : Pod need run and stop do specific task
 
-      * cronjobs : same as job but execute as defined schedule
+    - cronjobs : same as job but execute as defined schedule
 
 13. Services
 
@@ -143,8 +173,8 @@ how to call service
 
 type of services to communicate
 
-  1. CLsuterIP :
-commubicate with in the cluster using pod networking
+1. CLsuterIP :
+   commubicate with in the cluster using pod networking
 
 ```yaml
 apiVersion: apps/v1
@@ -186,11 +216,10 @@ spec:
   ports:
     - port: 80
       targetPort: 8080
-
 ```
 
-  2. NodePort :
-extend cluster service to external network (node network)
+2. NodePort :
+   extend cluster service to external network (node network)
 
 ```yaml
 apiVersion: v1
@@ -206,10 +235,9 @@ spec:
       port: 80
       targetPort: 8080 # app's container port
       nodePort: 30000 # pecify a specific nodePort or Kubernetes will assign one
-
 ```
 
-  3. LoadBalancer : distributes incoming traffic among your app's pods and is cloud-provider-specific.
+3. LoadBalancer : distributes incoming traffic among your app's pods and is cloud-provider-specific.
 
 ```yaml
 apiVersion: v1
@@ -224,30 +252,27 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 8080 #  app's container port
-
 ```
 
-  4. ExternalName:
+4. ExternalName:
 
 ```yaml
 apiversion: v1
 kind: service
-metadata: 
+metadata:
   name: example-externalName
 spec:
   type: ExternalName
   externalName: rds.aws.com
 ```
 
-  5. Ingress : <br>
-API object manage external acess to the internal services by defining and enforcing routing rules for incoming HTTP and HTTPS traffic,
-Popular tools like nginx, HAProxy. Ingress controller can
+5. Ingress : <br>
+   API object manage external acess to the internal services by defining and enforcing routing rules for incoming HTTP and HTTPS traffic,
+   Popular tools like nginx, HAProxy. Ingress controller can
 
-* Route traffic to internal service by path base or name base routing
-* ssl terminate
-*
-
- ```yaml
+- Route traffic to internal service by path base or name base routing
+- ssl terminate
+- ```yaml
   apiVersion: networking.k8s.io/v1
   kind: Ingress
   metadata:
@@ -256,34 +281,33 @@ Popular tools like nginx, HAProxy. Ingress controller can
     nginx.ingress.kubernetes.io/rewrite-target: /
   spec:
     rules:
-    - host: example.com
-      http:
-        paths:
-          - path: /app
-            pathType: Prefix
-            backend:
-              service:
-                name: example-service
-                port:
-                  number: 80
- 
- ```
+      - host: example.com
+        http:
+          paths:
+            - path: /app
+              pathType: Prefix
+              backend:
+                service:
+                  name: example-service
+                  port:
+                    number: 80
+  ```
 
 ## Manage role-based access control (RBAC)
 
-* shoud know how to create, modify and delete RBACs.
+- shoud know how to create, modify and delete RBACs.
 
 ## Use Kubeadm to install a basic cluster
 
-* should be able to operate the kubeadm tool to set up a Kubernetes cluster
+- should be able to operate the kubeadm tool to set up a Kubernetes cluster
 
 ## Manage a highly-available Kubernetes cluster
 
-* should be able to understand how to add nodes to the cluster and configure it to be highly available
+- should be able to understand how to add nodes to the cluster and configure it to be highly available
 
 ## Provision underlying infrastructure to deploy a Kubernetes cluster
 
-* main goal here is to be able to lay the groundwork for a Kubernetes cluster installation (network, storage, dependencies, etc.)
+- main goal here is to be able to lay the groundwork for a Kubernetes cluster installation (network, storage, dependencies, etc.)
 
 Installing Kubeadm
 Create a cluster Kubeadm
@@ -296,7 +320,7 @@ kubelet and kubectl
 
 ## Perform a version upgrade on a Kubernetes cluster using Kubeadm
 
-* will be asked to upgrade a Kubernetes cluster using Kubeadm.
+- will be asked to upgrade a Kubernetes cluster using Kubeadm.
 
 upgrade Kubeadm Cluster
 
@@ -310,9 +334,9 @@ etcd Backup & Restore Operations
 
 # Workloads & Scheduling
 
-type of workload :  
+type of workload :
 
-* replica-sets: maintain the set of pods as metions in pod yaml
+- replica-sets: maintain the set of pods as metions in pod yaml
 
   ```yaml
   apiVersion: apps/v1
@@ -331,26 +355,26 @@ type of workload :
           type: webapp
       spec:
         container:
-        - name: web-server
-          image: nginx
+          - name: web-server
+            image: nginx
     replicas: 3
     selector:
   ```
 
-  * Deployment: create pods
-        deployment --> replicaSet --> Pods
+  - Deployment: create pods
+    deployment --> replicaSet --> Pods
 
-  * daemonSet:  create pods in each node in the cluster (monitoring agent, log tools)
+  - daemonSet: create pods in each node in the cluster (monitoring agent, log tools)
 
-  * StatefulSet :
-            Maintain the state of pods even in recreation. Useful when creating clustered applications (Database, Redis, etc).
+  - StatefulSet :
+    Maintain the state of pods even in recreation. Useful when creating clustered applications (Database, Redis, etc).
 
-    * pods need persitant state (ex: map storage to pod)
-    * start pods in ordered list
+    - pods need persitant state (ex: map storage to pod)
+    - start pods in ordered list
 
-  * Jobs : Pod need run and stop do specific task
+  - Jobs : Pod need run and stop do specific task
 
-  * cronjobs : same as job but execute as defined schedule
+  - cronjobs : same as job but execute as defined schedule
 
 ## Understand deployments and how to perform rolling update and rollbacks
 
@@ -359,23 +383,26 @@ Kubernetes Deployment ensures that an application has a minimum number of replic
 In the Exam , you should know how to do rollbacks and rollouts of deployments.
 
 Kubernetes Deployment Concepts
-  
-  1. Recreate [native]
-  2. Ramped [native] [default]
-      * ramp update or rolling update
-  3. Blue/Green
-      * red/black deployment, create new version traffic route instantly.this can be done by changing serive selector label patching once version 2 created. easy to rollback and rollforward. high resource utilization
 
-  4. Canary
-      * same as ramped update change route to percentage of traffic.can do this by create pods count as per percentage each versions. then use same service for both version. this can be done with service mesh like [Istio]
+1. Recreate [native]
+2. Ramped [native] [default]
+   - ramp update or rolling update
+3. Blue/Green
 
-  5. A/B Testing
-      * route traffic to reach version based on incoming traffic metadata like device type, geo-location, user type,
+   - red/black deployment, create new version traffic route instantly.this can be done by changing serive selector label patching once version 2 created. easy to rollback and rollforward. high resource utilization
 
-  6. Shadow
-      * The mirror version does actively respond in the mirror state. use test application load testing, application behaviour error without impact to users.
+4. Canary
 
-  ![Alt text](image.png)
+   - same as ramped update change route to percentage of traffic.can do this by create pods count as per percentage each versions. then use same service for both version. this can be done with service mesh like [Istio]
+
+5. A/B Testing
+
+   - route traffic to reach version based on incoming traffic metadata like device type, geo-location, user type,
+
+6. Shadow
+   - The mirror version does actively respond in the mirror state. use test application load testing, application behaviour error without impact to users.
+
+![Alt text](image.png)
 
 Kubernetes Rolling Update
 
@@ -385,8 +412,8 @@ for the deployment, we use yaml configuration file to define the deployment. In 
 apiversion: v1,v1beta, apps/v1 etc
 kind: pod, services, deployment etc
 metadata: <meta data of pod>
-  name: 
-  labels: 
+  name:
+  labels:
 spec: <specification of pod>
 ```
 
@@ -411,10 +438,10 @@ Working With Horizontal Pod Autoscaler
 
 ### autoscaling
 
-  auto scale pod or cluster size based on metrics. simply use basic metrics like CPU, and memory but can use external metrics like message queue size, and object type kind of metrics using external adapters.
+auto scale pod or cluster size based on metrics. simply use basic metrics like CPU, and memory but can use external metrics like message queue size, and object type kind of metrics using external adapters.
 
-  1. HPA
-  2. Cluster autoscale
+1. HPA
+2. Cluster autoscale
 
 ```yaml
 apiVersion: autoscaling/v2
@@ -459,7 +486,7 @@ spec:
       - name: zone-prod-cluster-scale-up-policy
         nodeSelector:
           matchLabels:
-            node-role.kubernetes.io/worker: " "    #this label used to apply only for worker nodes in cluster
+            node-role.kubernetes.io/worker: " " #this label used to apply only for worker nodes in cluster
         limits:
           cpu: "2000m"
           memory: "4Gi"
@@ -476,7 +503,6 @@ spec:
           memory: "2Gi"
         delta: 3
         enabled: true
-
 ```
 
 ## Understand the primitives used to create robust, self-healing, application deployments
@@ -493,15 +519,15 @@ Cluster management also includes workload management; as an administrator, you s
 
 Each pod in Kubernetes can be assigned a minimum and maximum CPU and memory usage.
 
-* Manage Container Resources
-* Pods with resource requests
+- Manage Container Resources
+- Pods with resource requests
 
 You can use any of the following methods to choose where Kubernetes schedules specific Pods:
 
-* <code>nodeSelector</code> field matching against node labels
-* Affinity and anti-affinity
-* nodeName field
-* Pod topology spread constraints (taints and tollerents)
+- <code>nodeSelector</code> field matching against node labels
+- Affinity and anti-affinity
+- nodeName field
+- Pod topology spread constraints (taints and tollerents)
 
 ### node selector
 
@@ -523,11 +549,10 @@ metadata:
     env: test
 spec:
   containers:
-  - name: nginx
-    image: nginx
+    - name: nginx
+      image: nginx
   nodeSelector:
     disktype: ssd
-
 ```
 
 ### afinity and anti-afinity
@@ -536,8 +561,8 @@ affinity feature consists of two types
 
 1. node afinity : like the <code>nodeSelector</code> field but is more expressive and allows you to specify soft rules.can use In, NotIn, Exists, DoesNotExist, Gt and Lt operators. NotIn and DoesNotExist quit similar to function of taints and tollerants,you can use it.
 
-    * <code>requiredDuringSchedulingIgnoredDuringExecution</code>: The scheduler can't schedule the Pod unless the rule is met. This functions like nodeSelector, but with a more expressive syntax.
-    * <code>preferredDuringSchedulingIgnoredDuringExecution</code>: The scheduler tries to find a node that meets the rule. If a matching node is not available, the scheduler still schedules the Pod.
+   - <code>requiredDuringSchedulingIgnoredDuringExecution</code>: The scheduler can't schedule the Pod unless the rule is met. This functions like nodeSelector, but with a more expressive syntax.
+   - <code>preferredDuringSchedulingIgnoredDuringExecution</code>: The scheduler tries to find a node that meets the rule. If a matching node is not available, the scheduler still schedules the Pod.
 
 example:
 
@@ -551,24 +576,23 @@ spec:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
         nodeSelectorTerms:
-        - matchExpressions:
-          - key: topology.kubernetes.io/zone
-            operator: In
-            values:
-            - antarctica-east1
-            - antarctica-west1
+          - matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values:
+                  - antarctica-east1
+                  - antarctica-west1
       preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 1
-        preference:
-          matchExpressions:
-          - key: another-node-label-key
-            operator: In
-            values:
-            - another-node-label-value
+        - weight: 1
+          preference:
+            matchExpressions:
+              - key: another-node-label-key
+                operator: In
+                values:
+                  - another-node-label-value
   containers:
-  - name: with-node-affinity
-    image: registry.k8s.io/pause:2.0
-
+    - name: with-node-affinity
+      image: registry.k8s.io/pause:2.0
 ```
 
 2. Inter-pod affinity/anti-affinity allows you to constrain Pods against labels on other Pods
@@ -604,6 +628,129 @@ Understanding each service type and their use cases is critical. Understanding h
 
 Kubernetes Service
 External Resource Exposure
+
+type of services
+
+1. CLsuterIP :
+   commubicate with in the cluster using pod networking
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review-deployment
+  labels:
+    app: review
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: review
+  template:
+    metadata:
+      labels:
+        app: review
+    spec:
+      containers:
+        - name: review-app
+          image: chamilaliyanage/echo-env-http:1.1
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: MY_APP_NAME
+              value: review-application
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: review-service
+spec:
+  selector:
+    app: review
+  ports:
+    - port: 80
+      targetPort: 8080
+```
+
+2. NodePort :
+   extend cluster service to external network (node network)
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-nodeport-service
+spec:
+  type: NodePort
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080 # app's container port
+      nodePort: 30000 # pecify a specific nodePort or Kubernetes will assign one
+```
+
+3. LoadBalancer : distributes incoming traffic among your app's pods and is cloud-provider-specific.
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-loadbalancer-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: my-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080 #  app's container port
+```
+
+4. ExternalName:
+
+```yaml
+apiversion: v1
+kind: service
+metadata:
+  name: example-externalName
+spec:
+  type: ExternalName
+  externalName: rds.aws.com
+```
+
+5. Ingress : <br>
+   API object manage external acess to the internal services by defining and enforcing routing rules for incoming HTTP and HTTPS traffic,
+   Popular tools like nginx, HAProxy. Ingress controller can
+
+- Route traffic to internal service by path base or name base routing
+- ssl terminate
+- ```yaml
+  apiVersion: networking.k8s.io/v1
+  kind: Ingress
+  metadata:
+    name: example-ingress
+    annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  spec:
+    rules:
+      - host: example.com
+        http:
+          paths:
+            - path: /app
+              pathType: Prefix
+              backend:
+                service:
+                  name: example-service
+                  port:
+                    number: 80
+  ```
+
 
 ## Know how to use Ingress controllers and Ingress resources
 
@@ -690,7 +837,7 @@ Examining logs of Kubernetes control plane components such as etcd and the sched
 
 ### Kubernetes Logging
 
-  by default k8s support gets logs from stdout and stderr in container runtime. kublet writes those logs in a persistent location(/var/log) in each node. agents in each node(can collect logs and send log store/processor to keep logs.
+by default k8s support gets logs from stdout and stderr in container runtime. kublet writes those logs in a persistent location(/var/log) in each node. agents in each node(can collect logs and send log store/processor to keep logs.
 
 example :
 agent deploy in each node using daemonset deployment
@@ -732,30 +879,26 @@ spec:
         app: filebeat
     spec:
       containers:
-      - name: filebeat
-        image: docker.elastic.co/beats/filebeat:latest
-        args: [
-          "-c", "/etc/filebeat.yml",
-          "-e",
-        ]
-        volumeMounts:
-        - name: filebeat-config
-          mountPath: /etc/filebeat.yml
-          subPath: filebeat.yml
-        - name: varlogpods
-          mountPath: /var/log/pods
-          readOnly: true
+        - name: filebeat
+          image: docker.elastic.co/beats/filebeat:latest
+          args: ["-c", "/etc/filebeat.yml", "-e"]
+          volumeMounts:
+            - name: filebeat-config
+              mountPath: /etc/filebeat.yml
+              subPath: filebeat.yml
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
       volumes:
-      - name: filebeat-config
-        configMap:
-          name: filebeat-config
-      - name: varlogpods
-        hostPath:
-          path: /var/log/pods
-
+        - name: filebeat-config
+          configMap:
+            name: filebeat-config
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
 ```
 
-  deploy elastic search to store/process
+deploy elastic search to store/process
 
 create elastic search service
 
@@ -785,7 +928,7 @@ metadata:
   name: elasticsearch
 spec:
   serviceName: elasticsearch
-  replicas: 3  
+  replicas: 3
   selector:
     matchLabels:
       app: elasticsearch
@@ -795,22 +938,21 @@ spec:
         app: elasticsearch
     spec:
       containers:
-      - name: elasticsearch-prod
-        image: docker.elastic.co/elasticsearch/elasticsearch:7.15.2
-        ports:
-        - containerPort: 9200
-          name: rest
-        - containerPort: 9300
-          name: inter-node
-        resources:
-          limits:
-            memory: 2Gi  # Adjust resource limits as needed
-          requests:
-            memory: 1Gi  # Adjust resource requests as needed
-        env:
-        - name: discovery.type
-          value: single-node  # For a single-node setup, can be changed for multi-node
-
+        - name: elasticsearch-prod
+          image: docker.elastic.co/elasticsearch/elasticsearch:7.15.2
+          ports:
+            - containerPort: 9200
+              name: rest
+            - containerPort: 9300
+              name: inter-node
+          resources:
+            limits:
+              memory: 2Gi # Adjust resource limits as needed
+            requests:
+              memory: 1Gi # Adjust resource requests as needed
+          env:
+            - name: discovery.type
+              value: single-node # For a single-node setup, can be changed for multi-node
 ```
 
 ## Understand how to monitor applications
@@ -821,14 +963,14 @@ Tools like Prometheus and Grafana are popular because they make metric managemen
 
 ### Cluster Health Monitoring
 
-* Monitoring cluster health using built-in tools (metrics-server, Prometheus, etc.).
-* Understanding the significance of different metrics (CPU, memory, network, etc.) in cluster evaluation.
-* Interpreting monitoring data to identify and resolve issues.
+- Monitoring cluster health using built-in tools (metrics-server, Prometheus, etc.).
+- Understanding the significance of different metrics (CPU, memory, network, etc.) in cluster evaluation.
+- Interpreting monitoring data to identify and resolve issues.
 
 ### Monitoring & Logging & Debugging
 
-  Prometheus :
-      pull base target monitoring. use pushgateway to monitor short-lived targets like jobs
+Prometheus :
+pull base target monitoring. use pushgateway to monitor short-lived targets like jobs
 
 ## Manage container stdout & stderr logs
 
@@ -847,7 +989,7 @@ Debug Kubernetes Objects
 ## Troubleshoot cluster component failure
 
 When users are confident that their application is properly configured, cluster components must be debugged and troubleshooted for failures.
- identifying and diagnosing issues affecting multiple nodes or the entire cluster.
+identifying and diagnosing issues affecting multiple nodes or the entire cluster.
 Applying debugging techniques to resolve cluster-wide problems.
 Recovering from cluster-level failures.
 Debug Kubernetes Cluster
@@ -859,3 +1001,25 @@ There may be instances where things go wrong on the network end, such as incorre
 Cluster Networking
 
 references: <https://teckbootcamps.com/cka-exam-study-guide/>
+
+
+# Other Info
+
+## Imparative vs Declarative Methods
+
+ * imparative approach : how to implement
+  commands: 
+    - create objects <br>
+<code> kubectl run --image=nginx nginx</code><br>
+<code> kubectl create deployment --image=nginx nginx</code><br>
+<code>kubectl expose deployment nginx --port 80  </code><br>
+<code>kubectl create service clusterip redis --tcp=6379:6379</code><br>
+<code>kubectl create service nodeport nginx --tcp=80:80 --node-port=30080</code><br>
+
+    - update objects <br>
+    <code>kubectl edit deployment nginx</code><br>
+    <code>kubectl scale deployment nginx --replicas=5</code><br>
+    <code>kubectl set image deployment nginx nginx=nginx:1.18</code><br>
+
+ * Declarative approach : what to implement
+  <code> kubectl apply -f resource-prod.yaml</code><br>

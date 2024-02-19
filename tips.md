@@ -74,6 +74,8 @@ Then, you can use the defined variable in the command like this:
 k run nginx --image=nginx $do > pod.yaml
 By employing the “dry run” and shell variable approach, you can efficiently create K8s resources and manage their configurations during the exam.
 
+
+
 Time management
 Since you will be executing the kubectl command multiple times, setting up aliases can save you valuable seconds with each entry. For instance, assigning an alias like ‘k’ for ‘kube-control’ can potentially grant you an additional minute or two towards the end of the exam
 
